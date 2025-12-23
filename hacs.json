@@ -1,5 +1,6 @@
 {
-    "hacs": "1.6.0",
     "name": "BG Smart Dimmer",
-    "homeassistant": "2025.4.1"
-}
+    "render_readme": true,
+    "country": ["GB"],
+    "homeassistant": "2022.12.0"
+  }
