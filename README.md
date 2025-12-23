@@ -1,8 +1,6 @@
 # BG Smart Local Control - Home Assistant Integration Setup
 
-## What We Discovered
-
-From reverse engineering the BG Smart app, we found it uses **ESP Local Control** protocol:
+Created by reverse engineering the BG Smart app which  uses **ESP Local Control** protocol:
 
 ### Protocol Details:
 - **Endpoint**: `http://[device-ip]:80/esp_local_ctrl/control`
@@ -28,8 +26,12 @@ From reverse engineering the BG Smart app, we found it uses **ESP Local Control*
   }
 }
 ```
+## Installation using HACS
+Add custom repositary https://github.com/rrwood/HA_BGSmart_LocalCtl
 
-## Installation Steps
+
+
+## Manual Installation Steps
 
 ### 1. Create Directory Structure
 
@@ -50,8 +52,6 @@ Create these files in `custom_components/bg_smart_local/`:
 - `light.py` - Light entity
 - `strings.json` - UI strings
 - `esp_local_ctrl.proto` - Protobuf definition
-
-(All files are provided in the artifacts above)
 
 ### 3. Generate Protobuf Python Files
 
