@@ -1,3 +1,4 @@
 {
-  "name": "BG SMART DIMMER INTEGRATION"
+  "name": "BG SMART DIMMER INTEGRATION",
+  "homeassistant": "2023.12.0"
 }
