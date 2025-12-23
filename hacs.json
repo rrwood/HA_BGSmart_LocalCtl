@@ -1,6 +1,6 @@
 {
     "name": "BG Smart Dimmer",
-    "render_readme": true,
+    "render_readme": "true",
     "country": ["GB"],
     "homeassistant": "2022.12.0"
   }
