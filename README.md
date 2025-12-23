@@ -1,4 +1,5 @@
-# BG Smart Local Control - Home Assistant Integration Setup
+# BG Smart Local Control - Home Assistant Integration 
+NOT YET TESTED AS WORKING
 
 Created by reverse engineering the BG Smart app which  uses **ESP Local Control** protocol:
 
