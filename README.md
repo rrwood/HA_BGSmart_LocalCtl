@@ -30,6 +30,7 @@ Created by reverse engineering the BG Smart app which  uses **ESP Local Control*
 ## Installation using HACS
 Add custom repositary https://github.com/rrwood/HA_BGSmart_LocalCtl
 
+Then follow steps 3 onwards.
 
 
 ## Manual Installation Steps
