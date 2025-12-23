@@ -1,5 +1,4 @@
-# strings.json
-STRINGS = {
+{
     "config": {
         "step": {
             "user": {
