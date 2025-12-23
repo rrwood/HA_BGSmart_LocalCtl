@@ -1,0 +1,21 @@
+# strings.json
+STRINGS = {
+    "config": {
+        "step": {
+            "user": {
+                "title": "BG Smart Local Control",
+                "description": "Connect to your BG Smart dimmer on the local network",
+                "data": {
+                    "host": "IP Address",
+                    "port": "Port",
+                    "node_id": "Node ID (optional)",
+                    "pop": "Proof of Possession (optional)",
+                    "security_type": "Security Type (0=None, 1=Sec1)"
+                }
+            }
+        },
+        "error": {
+            "cannot_connect": "Failed to connect to device"
+        }
+    }
+}

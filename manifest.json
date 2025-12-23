@@ -1,0 +1,12 @@
+# manifest.json
+MANIFEST = {
+    "domain": "bg_smart_local",
+    "name": "BG Smart Local Control",
+    "documentation": "https://github.com/yourusername/bg_smart_local",
+    "requirements": ["protobuf>=3.20.0"],
+    "codeowners": ["@yourusername"],
+    "version": "0.1.0",
+    "config_flow": True,
+    "iot_class": "local_polling"
+}
+
