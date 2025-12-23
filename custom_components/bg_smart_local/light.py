@@ -1,6 +1,7 @@
-# light.py
+"""Support for BG Smart Local Control lights."""
 import logging
 from typing import Any
+
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ColorMode,
@@ -10,14 +11,17 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import DOMAIN
+
 _LOGGER = logging.getLogger(__name__)
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-):
-    """Set up BG Smart lights."""
+) -> None:
+    """Set up BG Smart lights from a config entry."""
     data = hass.data[DOMAIN][entry.entry_id]
     device = data["device"]
     
@@ -30,15 +34,18 @@ async def async_setup_entry(
         for device_name in params.keys():
             entities.append(BGSmartDimmer(device, device_name, entry))
         
-        async_add_entities(entities)
-    except Exception as e:
-        _LOGGER.error(f"Failed to set up lights: {e}")
+        if entities:
+            async_add_entities(entities)
+        else:
+            _LOGGER.warning("No devices found in parameters")
+    except Exception as ex:
+        _LOGGER.error("Failed to set up lights: %s", ex)
 
 
 class BGSmartDimmer(LightEntity):
     """Representation of a BG Smart Dimmer."""
     
-    def __init__(self, device, device_name: str, entry: ConfigEntry):
+    def __init__(self, device, device_name: str, entry: ConfigEntry) -> None:
         """Initialize the dimmer."""
         self._device = device
         self._device_name = device_name
@@ -46,23 +53,18 @@ class BGSmartDimmer(LightEntity):
         self._attr_name = f"BG Smart {device_name}"
         self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
         self._attr_color_mode = ColorMode.BRIGHTNESS
-        self._state = None
-        self._brightness = None
+        self._attr_is_on = False
+        self._attr_brightness = None
     
     @property
-    def is_on(self):
-        """Return if the light is on."""
-        return self._state
-    
-    @property
-    def brightness(self):
+    def brightness(self) -> int | None:
         """Return the brightness (0-255)."""
-        if self._brightness is None:
+        if self._attr_brightness is None:
             return None
         # Convert from 0-100 to 0-255
-        return int(self._brightness * 2.55)
+        return int(self._attr_brightness * 2.55)
     
-    async def async_turn_on(self, **kwargs):
+    async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on the light."""
         brightness = kwargs.get(ATTR_BRIGHTNESS)
         
@@ -76,7 +78,7 @@ class BGSmartDimmer(LightEntity):
         success = await self._device.set_param(
             self._device_name,
             "Power",
-            {"power": 1}  # Turn on
+            {"power": 1}
         )
         
         if success and brightness is not None:
@@ -87,24 +89,24 @@ class BGSmartDimmer(LightEntity):
             )
         
         if success:
-            self._state = True
+            self._attr_is_on = True
             if brightness is not None:
-                self._brightness = brightness_pct
+                self._attr_brightness = brightness_pct
             self.async_write_ha_state()
     
-    async def async_turn_off(self, **kwargs):
+    async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the light."""
         success = await self._device.set_param(
             self._device_name,
             "Power",
-            {"power": 0}  # Turn off
+            {"power": 0}
         )
         
         if success:
-            self._state = False
+            self._attr_is_on = False
             self.async_write_ha_state()
     
-    async def async_update(self):
+    async def async_update(self) -> None:
         """Fetch new state data for this light."""
         try:
             params = await self._device.get_params()
@@ -113,13 +115,11 @@ class BGSmartDimmer(LightEntity):
                 
                 # Check for Power parameter
                 if "Power" in device_params:
-                    self._state = device_params["Power"].get("power", 0) == 1
+                    self._attr_is_on = device_params["Power"].get("power", 0) == 1
                 
                 # Check for Brightness parameter
                 if "Brightness" in device_params:
-                    self._brightness = device_params["Brightness"].get("brightness", 0)
+                    self._attr_brightness = device_params["Brightness"].get("brightness", 0)
                     
-        except Exception as e:
-            _LOGGER.error(f"Failed to update device state: {e}")
-
-
+        except Exception as ex:
+            _LOGGER.error("Failed to update device state: %s", ex)
