@@ -4,7 +4,7 @@ NOT YET TESTED AS WORKING
 Created by reverse engineering the BG Smart app which  uses **ESP Local Control** protocol:
 
 ### Protocol Details:
-- **Endpoint**: `http://[device-ip]:80/esp_local_ctrl/control`
+- **Endpoint**: `http://[device-ip]:8080/esp_local_ctrl/control`
 - **Method**: HTTP POST with Protocol Buffer (protobuf) messages
 - **Security**: Supports sec0 (no encryption) and sec1 (encrypted with PoP)
 - **Properties**: 
