@@ -1,4 +1,4 @@
-"""ESP Local Control Protocol Handler - Real Implementation. """
+"""ESP Local Control Protocol Handler - Final Implementation."""
 import asyncio
 import json
 import logging
@@ -19,7 +19,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class ESPLocalDevice:
-    """ESP Local Control Device - Real Implementation."""
+    """ESP Local Control Device - Final Implementation."""
     
     def __init__(self, host: str, port: int, node_id: str, pop: str, security_type: int):
         """Initialize device."""
@@ -94,19 +94,16 @@ class ESPLocalDevice:
         
         _LOGGER.debug("Getting property count from device")
         
-        # Create the request message
         request = pb.LocalCtrlMessage(
             msg=pb.TypeCmdGetPropertyCount,
             cmd_get_prop_count=pb.CmdGetPropertyCount()
         )
         
-        # Send request
         response_data = await self._send_protobuf_request(request)
         if not response_data:
             _LOGGER.error("Failed to get property count")
             return -1
         
-        # Parse response
         try:
             response = pb.LocalCtrlMessage()
             response.ParseFromString(response_data)
@@ -139,7 +136,6 @@ class ESPLocalDevice:
             _LOGGER.error("Invalid property count: %d", count)
             return None
         
-        # Create request for all properties (indices 0 to count-1)
         request = pb.LocalCtrlMessage(
             msg=pb.TypeCmdGetPropertyValues,
             cmd_get_prop_vals=pb.CmdGetPropertyValues(
@@ -147,13 +143,11 @@ class ESPLocalDevice:
             )
         )
         
-        # Send request
         response_data = await self._send_protobuf_request(request)
         if not response_data:
             _LOGGER.error("Failed to get property values")
             return None
         
-        # Parse response
         try:
             response = pb.LocalCtrlMessage()
             response.ParseFromString(response_data)
@@ -167,21 +161,17 @@ class ESPLocalDevice:
                             response.resp_get_prop_vals.status)
                 return None
             
-            # Parse properties
             properties = {}
             for prop_info in response.resp_get_prop_vals.props:
                 try:
                     prop_name = prop_info.name
                     prop_value_bytes = prop_info.value
-                    
-                    # The value is JSON encoded as bytes
                     prop_value_str = prop_value_bytes.decode('utf-8')
                     prop_value = json.loads(prop_value_str)
                     
                     properties[prop_name] = prop_value
                     _LOGGER.debug("Property '%s': %s", prop_name, prop_value)
                     
-                    # Cache params for quick access
                     if prop_name == "params":
                         self._params_cache = prop_value
                         
@@ -203,11 +193,9 @@ class ESPLocalDevice:
         
         _LOGGER.debug("Setting property values: %s", params_json)
         
-        # Property at index 1 is always "params"
         json_str = json.dumps(params_json)
         json_bytes = json_str.encode('utf-8')
         
-        # Create request
         request = pb.LocalCtrlMessage(
             msg=pb.TypeCmdSetPropertyValues,
             cmd_set_prop_vals=pb.CmdSetPropertyValues(
@@ -220,13 +208,11 @@ class ESPLocalDevice:
             )
         )
         
-        # Send request
         response_data = await self._send_protobuf_request(request)
         if not response_data:
             _LOGGER.error("Failed to set property values")
             return False
         
-        # Parse response
         try:
             response = pb.LocalCtrlMessage()
             response.ParseFromString(response_data)
@@ -238,15 +224,14 @@ class ESPLocalDevice:
             if response.resp_set_prop_vals.status == pb.Success:
                 _LOGGER.info("Set property values successful")
                 
-                # Update cache
-                for key, value in params_json.items():
-                    if key in self._params_cache:
-                        if isinstance(self._params_cache[key], dict) and isinstance(value, dict):
-                            self._params_cache[key].update(value)
-                        else:
-                            self._params_cache[key] = value
-                    else:
-                        self._params_cache[key] = value
+                # Update cache with the new values
+                for device_name, params in params_json.items():
+                    if device_name not in self._params_cache:
+                        self._params_cache[device_name] = {}
+                    
+                    # Merge the updates into cache
+                    for param_name, param_value in params.items():
+                        self._params_cache[device_name][param_name] = param_value
                 
                 return True
             else:
@@ -259,7 +244,7 @@ class ESPLocalDevice:
             return False
     
     async def get_params(self) -> Dict[str, Any]:
-        """Get current device params (brightness, power, etc.)."""
+        """Get current device params."""
         _LOGGER.debug("Getting params")
         
         if not self._params_cache:
@@ -275,17 +260,22 @@ class ESPLocalDevice:
     async def set_param(self, device_name: str, param_name: str, value: Any) -> bool:
         """Set a specific parameter.
         
-        Args:
-            device_name: Name of the device (e.g., "Switch")
-            param_name: Parameter name (e.g., "Power", "Brightness")
-            value: Parameter value dict (e.g., {"power": 1})
+        The device expects the full nested structure:
+        {
+            "DMHCM": {
+                "Power": true,
+                "brightness": 75
+            }
+        }
+        
+        Note: Values are sent directly (bool, int, string), not wrapped in dicts.
         """
         _LOGGER.debug(
-            "Setting param: device=%s, param=%s, value=%s",
-            device_name, param_name, value
+            "Setting param: device=%s, param=%s, value=%s (type=%s)",
+            device_name, param_name, value, type(value).__name__
         )
         
-        # Build nested JSON structure
+        # Build the params structure with the direct value
         params = {
             device_name: {
                 param_name: value
