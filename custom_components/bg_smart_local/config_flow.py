@@ -6,6 +6,7 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.const import CONF_HOST, CONF_PORT
 
+# Import DOMAIN from const
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
