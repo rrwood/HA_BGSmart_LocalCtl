@@ -1,4 +1,4 @@
-"""ESP Local Control Protocol Handler - Real Implementation."""
+"""ESP Local Control Protocol Handler - Real Implementation. """
 import asyncio
 import json
 import logging
