@@ -1,19 +1,25 @@
-"""ESP Local Control Protocol Handler."""
+"""ESP Local Control Protocol Handler - Real Implementation."""
 import asyncio
 import json
 import logging
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 import aiohttp
 
-_LOGGER = logging.getLogger(__name__)
+# Import the generated protobuf messages
+try:
+    from . import esp_local_ctrl_pb2 as pb
+    PROTOBUF_AVAILABLE = True
+except ImportError:
+    PROTOBUF_AVAILABLE = False
+    import warnings
+    warnings.warn("Protobuf messages not available. Run: python -m grpc_tools.protoc -I. --python_out=. esp_local_ctrl.proto")
 
-# For now, use a stub implementation until protobuf is set up
-# Replace this with actual protobuf import once generated
+_LOGGER = logging.getLogger(__name__)
 
 
 class ESPLocalDevice:
-    """ESP Local Control Device."""
+    """ESP Local Control Device - Real Implementation."""
     
     def __init__(self, host: str, port: int, node_id: str, pop: str, security_type: int):
         """Initialize device."""
@@ -27,14 +33,22 @@ class ESPLocalDevice:
         self.property_count = -1
         self._params_cache = {}
         
+        if not PROTOBUF_AVAILABLE:
+            _LOGGER.error("Protobuf messages not available! Integration will not work.")
+        
         _LOGGER.info(
-            "Initialized ESPLocalDevice: host=%s, port=%s, security=%s",
-            host, port, security_type
+            "Initialized ESPLocalDevice: host=%s, port=%s, security=%s, protobuf=%s",
+            host, port, security_type, PROTOBUF_AVAILABLE
         )
     
-    async def _send_raw_request(self, data: bytes) -> Optional[bytes]:
-        """Send raw HTTP request."""
+    async def _send_protobuf_request(self, message) -> Optional[bytes]:
+        """Send protobuf request and get response."""
+        if not PROTOBUF_AVAILABLE:
+            _LOGGER.error("Cannot send request: protobuf not available")
+            return None
+        
         url = f"{self.base_url}/{self.control_path}"
+        payload = message.SerializeToString()
         
         headers = {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -42,13 +56,13 @@ class ESPLocalDevice:
             "Connection": "Keep-Alive"
         }
         
-        _LOGGER.debug("Sending request to %s (payload size: %d bytes)", url, len(data))
+        _LOGGER.debug("Sending protobuf request to %s (payload: %d bytes)", url, len(payload))
         
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     url, 
-                    data=data, 
+                    data=payload, 
                     headers=headers, 
                     timeout=aiohttp.ClientTimeout(total=10)
                 ) as response:
@@ -58,6 +72,8 @@ class ESPLocalDevice:
                         return body
                     else:
                         _LOGGER.error("HTTP error: %s", response.status)
+                        text = await response.text()
+                        _LOGGER.error("Response body: %s", text)
                         return None
         except aiohttp.ClientError as e:
             _LOGGER.error("Connection error: %s", e)
@@ -67,21 +83,55 @@ class ESPLocalDevice:
             return None
     
     async def get_property_count(self) -> int:
-        """Get the number of properties."""
+        """Get the number of properties from device."""
+        if not PROTOBUF_AVAILABLE:
+            _LOGGER.error("Protobuf not available")
+            return -1
+        
         if self.property_count > 0:
             _LOGGER.debug("Using cached property count: %d", self.property_count)
             return self.property_count
         
         _LOGGER.debug("Getting property count from device")
         
-        # For testing: return 2 (standard for ESP local control)
-        # TODO: Replace with actual protobuf call
-        _LOGGER.warning("Using stub implementation - returning property count = 2")
-        self.property_count = 2
-        return 2
+        # Create the request message
+        request = pb.LocalCtrlMessage(
+            msg=pb.TypeCmdGetPropertyCount,
+            cmd_get_prop_count=pb.CmdGetPropertyCount()
+        )
+        
+        # Send request
+        response_data = await self._send_protobuf_request(request)
+        if not response_data:
+            _LOGGER.error("Failed to get property count")
+            return -1
+        
+        # Parse response
+        try:
+            response = pb.LocalCtrlMessage()
+            response.ParseFromString(response_data)
+            
+            if response.HasField('resp_get_prop_count'):
+                status = response.resp_get_prop_count.status
+                if status == pb.Success:
+                    self.property_count = response.resp_get_prop_count.count
+                    _LOGGER.info("Property count: %d", self.property_count)
+                    return self.property_count
+                else:
+                    _LOGGER.error("Get property count failed with status: %s", status)
+            else:
+                _LOGGER.error("Response does not contain resp_get_prop_count")
+        except Exception as e:
+            _LOGGER.error("Failed to parse response: %s", e, exc_info=True)
+        
+        return -1
     
     async def get_property_values(self) -> Optional[Dict[str, Any]]:
-        """Get all property values."""
+        """Get all property values from device."""
+        if not PROTOBUF_AVAILABLE:
+            _LOGGER.error("Protobuf not available")
+            return None
+        
         _LOGGER.debug("Getting property values")
         
         count = await self.get_property_count()
@@ -89,51 +139,127 @@ class ESPLocalDevice:
             _LOGGER.error("Invalid property count: %d", count)
             return None
         
-        # TODO: Replace with actual protobuf implementation
-        # For now, return stub data for testing
-        _LOGGER.warning("Using stub implementation for get_property_values")
+        # Create request for all properties (indices 0 to count-1)
+        request = pb.LocalCtrlMessage(
+            msg=pb.TypeCmdGetPropertyValues,
+            cmd_get_prop_vals=pb.CmdGetPropertyValues(
+                indices=list(range(count))
+            )
+        )
         
-        stub_properties = {
-            "config": {
-                "node_id": self.node_id or "test_node",
-                "firmware": "1.0.0"
-            },
-            "params": {
-                "Switch": {
-                    "Power": {"power": 0},
-                    "Brightness": {"brightness": 0}
-                }
-            }
-        }
+        # Send request
+        response_data = await self._send_protobuf_request(request)
+        if not response_data:
+            _LOGGER.error("Failed to get property values")
+            return None
         
-        _LOGGER.info("Properties: %s", stub_properties)
-        
-        # Cache params
-        if "params" in stub_properties:
-            self._params_cache = stub_properties["params"]
-        
-        return stub_properties
+        # Parse response
+        try:
+            response = pb.LocalCtrlMessage()
+            response.ParseFromString(response_data)
+            
+            if not response.HasField('resp_get_prop_vals'):
+                _LOGGER.error("Response does not contain resp_get_prop_vals")
+                return None
+            
+            if response.resp_get_prop_vals.status != pb.Success:
+                _LOGGER.error("Get property values failed with status: %s", 
+                            response.resp_get_prop_vals.status)
+                return None
+            
+            # Parse properties
+            properties = {}
+            for prop_info in response.resp_get_prop_vals.props:
+                try:
+                    prop_name = prop_info.name
+                    prop_value_bytes = prop_info.value
+                    
+                    # The value is JSON encoded as bytes
+                    prop_value_str = prop_value_bytes.decode('utf-8')
+                    prop_value = json.loads(prop_value_str)
+                    
+                    properties[prop_name] = prop_value
+                    _LOGGER.debug("Property '%s': %s", prop_name, prop_value)
+                    
+                    # Cache params for quick access
+                    if prop_name == "params":
+                        self._params_cache = prop_value
+                        
+                except Exception as e:
+                    _LOGGER.error("Failed to parse property %s: %s", prop_info.name, e)
+            
+            _LOGGER.info("Retrieved %d properties from device", len(properties))
+            return properties
+            
+        except Exception as e:
+            _LOGGER.error("Failed to parse response: %s", e, exc_info=True)
+            return None
     
     async def set_property_values(self, params_json: Dict[str, Any]) -> bool:
         """Set device parameters."""
+        if not PROTOBUF_AVAILABLE:
+            _LOGGER.error("Protobuf not available")
+            return False
+        
         _LOGGER.debug("Setting property values: %s", params_json)
         
-        # TODO: Replace with actual protobuf implementation
-        _LOGGER.warning("Using stub implementation for set_property_values")
+        # Property at index 1 is always "params"
+        json_str = json.dumps(params_json)
+        json_bytes = json_str.encode('utf-8')
         
-        # Update cache
-        for key, value in params_json.items():
-            if key in self._params_cache:
-                if isinstance(self._params_cache[key], dict) and isinstance(value, dict):
-                    self._params_cache[key].update(value)
-                else:
-                    self._params_cache[key] = value
+        # Create request
+        request = pb.LocalCtrlMessage(
+            msg=pb.TypeCmdSetPropertyValues,
+            cmd_set_prop_vals=pb.CmdSetPropertyValues(
+                props=[
+                    pb.PropertyValue(
+                        index=1,  # Index 1 is "params"
+                        value=json_bytes
+                    )
+                ]
+            )
+        )
         
-        _LOGGER.info("Set properties successful (stub)")
-        return True
+        # Send request
+        response_data = await self._send_protobuf_request(request)
+        if not response_data:
+            _LOGGER.error("Failed to set property values")
+            return False
+        
+        # Parse response
+        try:
+            response = pb.LocalCtrlMessage()
+            response.ParseFromString(response_data)
+            
+            if not response.HasField('resp_set_prop_vals'):
+                _LOGGER.error("Response does not contain resp_set_prop_vals")
+                return False
+            
+            if response.resp_set_prop_vals.status == pb.Success:
+                _LOGGER.info("Set property values successful")
+                
+                # Update cache
+                for key, value in params_json.items():
+                    if key in self._params_cache:
+                        if isinstance(self._params_cache[key], dict) and isinstance(value, dict):
+                            self._params_cache[key].update(value)
+                        else:
+                            self._params_cache[key] = value
+                    else:
+                        self._params_cache[key] = value
+                
+                return True
+            else:
+                _LOGGER.error("Set property values failed with status: %s",
+                            response.resp_set_prop_vals.status)
+                return False
+                
+        except Exception as e:
+            _LOGGER.error("Failed to parse response: %s", e, exc_info=True)
+            return False
     
     async def get_params(self) -> Dict[str, Any]:
-        """Get current device params."""
+        """Get current device params (brightness, power, etc.)."""
         _LOGGER.debug("Getting params")
         
         if not self._params_cache:
@@ -141,16 +267,25 @@ class ESPLocalDevice:
             if properties and "params" in properties:
                 self._params_cache = properties["params"]
                 _LOGGER.debug("Cached params: %s", self._params_cache)
+            else:
+                _LOGGER.warning("No params found in properties")
         
         return self._params_cache
     
     async def set_param(self, device_name: str, param_name: str, value: Any) -> bool:
-        """Set a specific parameter."""
+        """Set a specific parameter.
+        
+        Args:
+            device_name: Name of the device (e.g., "Switch")
+            param_name: Parameter name (e.g., "Power", "Brightness")
+            value: Parameter value dict (e.g., {"power": 1})
+        """
         _LOGGER.debug(
             "Setting param: device=%s, param=%s, value=%s",
             device_name, param_name, value
         )
         
+        # Build nested JSON structure
         params = {
             device_name: {
                 param_name: value
