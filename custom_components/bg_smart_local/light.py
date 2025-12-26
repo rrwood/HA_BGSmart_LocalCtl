@@ -1,4 +1,4 @@
-"""Support for BG Smart Local Control lights...."""
+"""Support for BG Smart Local Control lights."""
 import logging
 from typing import Any
 
@@ -10,6 +10,10 @@ from homeassistant.components.light import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 
 from .const import DOMAIN
 
@@ -24,12 +28,13 @@ async def async_setup_entry(
     """Set up BG Smart lights from a config entry."""
     data = hass.data[DOMAIN][entry.entry_id]
     device = data["device"]
+    coordinator = data["coordinator"]
     
-    _LOGGER.debug("Setting up BG Smart Local lights version 0.0.6")
+    _LOGGER.debug("Setting up BG Smart Local lights")
     
     try:
-        # Get device parameters
-        params = await device.get_params()
+        # Get device parameters from coordinator
+        params = coordinator.data
         _LOGGER.info("Device params: %s", params)
         
         if not params:
@@ -37,18 +42,17 @@ async def async_setup_entry(
             return
         
         # Filter to only create entities for actual dimmer devices
-        # Look for devices that have both "Power" and "brightness" parameters
         entities = []
         for device_name, device_params in params.items():
             if isinstance(device_params, dict) and "Power" in device_params and "brightness" in device_params:
                 _LOGGER.info("Creating light entity for dimmer: %s", device_name)
-                entities.append(BGSmartDimmer(device, device_name, device_params, entry))
+                entities.append(BGSmartDimmer(coordinator, device, device_name, device_params, entry))
             else:
                 _LOGGER.debug("Skipping non-dimmer device: %s", device_name)
         
         if entities:
             _LOGGER.info("Adding %s light entities", len(entities))
-            async_add_entities(entities, update_before_add=True)
+            async_add_entities(entities)
         else:
             _LOGGER.warning("No dimmer devices found in parameters")
             
@@ -56,11 +60,20 @@ async def async_setup_entry(
         _LOGGER.error("Failed to set up lights: %s", ex, exc_info=True)
 
 
-class BGSmartDimmer(LightEntity):
+class BGSmartDimmer(CoordinatorEntity, LightEntity):
     """Representation of a BG Smart Dimmer."""
     
-    def __init__(self, device, device_name: str, device_params: dict, entry: ConfigEntry) -> None:
+    def __init__(
+        self, 
+        coordinator: DataUpdateCoordinator,
+        device, 
+        device_name: str, 
+        device_params: dict, 
+        entry: ConfigEntry
+    ) -> None:
         """Initialize the dimmer."""
+        super().__init__(coordinator)
+        
         self._device = device
         self._device_name = device_name
         
@@ -71,19 +84,42 @@ class BGSmartDimmer(LightEntity):
         self._attr_name = friendly_name
         self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
         self._attr_color_mode = ColorMode.BRIGHTNESS
-        self._attr_is_on = False
-        self._attr_brightness = None
         
-        _LOGGER.info("Initialized dimmer: %s (device: %s)", friendly_name, device_name)
+        # Set initial state from device_params
+        self._update_from_params(device_params)
+        
+        _LOGGER.info(
+            "Initialized dimmer: %s (device: %s) - Power: %s, Brightness: %s%%",
+            friendly_name, device_name, self._attr_is_on, 
+            int((self._attr_brightness / 255) * 100) if self._attr_brightness else 0
+        )
+    
+    def _update_from_params(self, device_params: dict) -> None:
+        """Update entity state from device parameters."""
+        # Power is a boolean directly
+        self._attr_is_on = bool(device_params.get("Power", False))
+        
+        # brightness is an integer directly (range 1-100)
+        brightness_pct = device_params.get("brightness", 100)
+        # Convert from 1-100 to 0-255
+        self._attr_brightness = int((brightness_pct / 100) * 255)
     
     @property
-    def brightness(self) -> int | None:
-        """Return the brightness (0-255)."""
-        if self._attr_brightness is None:
-            return None
-        # Convert from 1-100 to 0-255
-        # Device uses 1-100 range, HA uses 0-255
-        return int((self._attr_brightness / 100) * 255)
+    def available(self) -> bool:
+        """Return if entity is available."""
+        return self.coordinator.last_update_success
+    
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        if self.coordinator.data and self._device_name in self.coordinator.data:
+            device_params = self.coordinator.data[self._device_name]
+            self._update_from_params(device_params)
+            _LOGGER.debug(
+                "%s updated from coordinator - Power: %s, Brightness: %s%%", 
+                self._device_name, self._attr_is_on,
+                int((self._attr_brightness / 255) * 100) if self._attr_brightness else 0
+            )
+        self.async_write_ha_state()
     
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on the light."""
@@ -92,46 +128,51 @@ class BGSmartDimmer(LightEntity):
         _LOGGER.debug("Turn on %s, brightness=%s", self._device_name, brightness)
         
         try:
-            # First, turn on the power if it's off
+            # Determine target brightness
+            if brightness is not None:
+                # Convert from 0-255 to 1-100 (device range)
+                brightness_pct = max(1, int((brightness / 255) * 100))
+            else:
+                # No brightness specified - use current or default to 100%
+                if self._attr_brightness is not None:
+                    brightness_pct = max(1, int((self._attr_brightness / 255) * 100))
+                else:
+                    brightness_pct = 100
+            
+            _LOGGER.info("Setting %s: Power=True, brightness=%s%%", self._device_name, brightness_pct)
+            
+            # Set brightness first
+            success = await self._device.set_param(
+                self._device_name,
+                "brightness",
+                brightness_pct
+            )
+            
+            if not success:
+                _LOGGER.error("Failed to set brightness for %s", self._device_name)
+                return
+            
+            # Ensure power is on
             success = await self._device.set_param(
                 self._device_name,
                 "Power",
-                True  # Power is a boolean, not a dict
+                True
             )
             
             if not success:
                 _LOGGER.error("Failed to turn on power for %s", self._device_name)
                 return
             
-            # Set brightness if specified
-            if brightness is not None:
-                # Convert from 0-255 to 1-100 (device range)
-                brightness_pct = max(1, int((brightness / 255) * 100))
-                
-                success = await self._device.set_param(
-                    self._device_name,
-                    "brightness",  # lowercase 'brightness'
-                    brightness_pct  # Direct integer, not a dict
-                )
-                
-                if not success:
-                    _LOGGER.error("Failed to set brightness for %s", self._device_name)
-                    return
-                
-                self._attr_brightness = brightness_pct
-            else:
-                # If no brightness specified, set to 100%
-                success = await self._device.set_param(
-                    self._device_name,
-                    "brightness",
-                    100
-                )
-                self._attr_brightness = 100
-            
+            # Update state immediately (don't wait for coordinator)
             self._attr_is_on = True
+            self._attr_brightness = int((brightness_pct / 100) * 255)
             self.async_write_ha_state()
+            
+            # Request coordinator refresh
+            await self.coordinator.async_request_refresh()
+            
             _LOGGER.info("Successfully turned on %s at brightness %s%%", 
-                        self._device_name, self._attr_brightness)
+                        self._device_name, brightness_pct)
             
         except Exception as ex:
             _LOGGER.error("Error turning on %s: %s", self._device_name, ex, exc_info=True)
@@ -144,43 +185,20 @@ class BGSmartDimmer(LightEntity):
             success = await self._device.set_param(
                 self._device_name,
                 "Power",
-                False  # Boolean value
+                False
             )
             
             if success:
+                # Update state immediately
                 self._attr_is_on = False
                 self.async_write_ha_state()
+                
+                # Request coordinator refresh
+                await self.coordinator.async_request_refresh()
+                
                 _LOGGER.info("Successfully turned off %s", self._device_name)
             else:
                 _LOGGER.error("Failed to turn off %s", self._device_name)
                 
         except Exception as ex:
             _LOGGER.error("Error turning off %s: %s", self._device_name, ex, exc_info=True)
-    
-    async def async_update(self) -> None:
-        """Fetch new state data for this light."""
-        try:
-            _LOGGER.debug("Updating %s", self._device_name)
-            
-            params = await self._device.get_params()
-            if self._device_name not in params:
-                _LOGGER.warning("Device %s not found in params", self._device_name)
-                return
-                
-            device_params = params[self._device_name]
-            _LOGGER.debug("Device %s params: %s", self._device_name, device_params)
-            
-            # Power is a boolean directly
-            if "Power" in device_params:
-                power_state = device_params["Power"]
-                self._attr_is_on = bool(power_state)
-                _LOGGER.debug("Power state: %s", power_state)
-            
-            # brightness is an integer directly (range 1-100)
-            if "brightness" in device_params:
-                brightness = device_params["brightness"]
-                self._attr_brightness = brightness
-                _LOGGER.debug("Brightness: %s", brightness)
-                    
-        except Exception as ex:
-            _LOGGER.error("Failed to update %s: %s", self._device_name, ex, exc_info=True)

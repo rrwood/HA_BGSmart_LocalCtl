@@ -1,15 +1,18 @@
 """The BG Smart Local Control integration."""
 import logging
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.const import Platform
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = [Platform.LIGHT]
+SCAN_INTERVAL = timedelta(seconds=30)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
@@ -30,8 +33,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     device = ESPLocalDevice(host, port, node_id, pop, security_type)
     
+    # Create coordinator for polling
+    coordinator = DataUpdateCoordinator(
+        hass,
+        _LOGGER,
+        name="bg_smart_local",
+        update_method=device.get_params,
+        update_interval=SCAN_INTERVAL,
+    )
+    
+    # Initial refresh
+    await coordinator.async_config_entry_first_refresh()
+    
     hass.data[DOMAIN][entry.entry_id] = {
         "device": device,
+        "coordinator": coordinator,
         "host": host,
         "port": port
     }
