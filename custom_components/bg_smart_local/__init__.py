@@ -16,7 +16,7 @@ SCAN_INTERVAL = timedelta(seconds=30)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the BG Smart Local Control component."""
+    """Set up the BG Smart Local Control component..."""
     hass.data.setdefault(DOMAIN, {})
     return True
 

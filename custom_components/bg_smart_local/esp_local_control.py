@@ -37,7 +37,7 @@ class ESPLocalDevice:
             _LOGGER.error("Protobuf messages not available! Integration will not work.")
         
         _LOGGER.info(
-            "Initialized ESPLocalDevice: host=%s, port=%s, security=%s, protobuf=%s",
+            "Initialized v0.1.8 ESPLocalDevice: host=%s, port=%s, security=%s, protobuf=%s",
             host, port, security_type, PROTOBUF_AVAILABLE
         )
     

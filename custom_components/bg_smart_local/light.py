@@ -30,7 +30,7 @@ async def async_setup_entry(
     device = data["device"]
     coordinator = data["coordinator"]
     
-    _LOGGER.debug("Setting up BG Smart Local lights")
+    _LOGGER.debug("Setting up BG Smart Local lights v0.1.8")
     
     try:
         # Get device parameters from coordinator
