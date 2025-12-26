@@ -1,4 +1,4 @@
-"""Support for BG Smart Local Control lights."""
+"""Support for BG Smart Local Control lights...."""
 import logging
 from typing import Any
 
@@ -25,7 +25,7 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][entry.entry_id]
     device = data["device"]
     
-    _LOGGER.debug("Setting up BG Smart Local lights")
+    _LOGGER.debug("Setting up BG Smart Local lights version 0.0.6")
     
     try:
         # Get device parameters
