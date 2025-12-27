@@ -1,202 +1,125 @@
-# BG Smart Local Control - Home Assistant Integration 
-NOT YET TESTED AS WORKING
+# BG Smart Local Control for Home Assistant
 
-Created by reverse engineering the BG Smart app which  uses **ESP Local Control** protocol:
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/custom-components/hacs)
+[![GitHub release](https://img.shields.io/github/release/rrwood/HA_BGSmart_LocalCtl.svg)](https://github.com/rrwood/HA_BGSmart_LocalCtl/releases)
+[![License](https://img.shields.io/github/license/rrwood/HA_BGSmart_LocalCtl.svg)](LICENSE)
 
-### Protocol Details:
-- **Endpoint**: `http://[device-ip]:8080/esp_local_ctrl/control`
-- **Method**: HTTP POST with Protocol Buffer (protobuf) messages
-- **Security**: Supports sec0 (no encryption) and sec1 (encrypted with PoP)
-- **Properties**: 
-  - Index 0: `config` - Device configuration (node_id, firmware, etc.)
-  - Index 1: `params` - Device controls (brightness, power, etc.)
+Local control integration for BG Smart (Luceco) dimmer switches using the ESP Local Control protocol.
 
-### Message Flow:
-```
-1. Get Property Count → Returns 2 (config + params)
-2. Get Property Values → Returns JSON data for each property
-3. Set Property Values → Send JSON to control device
-```
+## Features
 
-### JSON Structure for Controls:
-```json
-{
-  "DeviceName": {
-    "Power": {"power": 1},
-    "Brightness": {"brightness": 75}
-  }
-}
-```
-## Installation using HACS
-Add custom repositary https://github.com/rrwood/HA_BGSmart_LocalCtl
+✅ **100% Local Control** - No cloud dependency, works without internet  
+✅ **Fast Response** - 50-100ms latency vs 500ms-2s for cloud  
+✅ **Privacy Friendly** - All communication stays on your local network  
+✅ **Full Brightness Control** - On/Off and 0-100% dimming  
+✅ **Auto Discovery** - Automatically finds and configures your dimmers  
+✅ **Secure** - Uses Sec1 encryption with PoP (Proof of Possession)  
 
-Then follow steps 3 onwards.
+## Supported Devices
 
+- BG Smart Dimmer Switch (DMHCM)
+- Luceco Dimmer Controller
+- Any ESP32-based BG Smart/Luceco device with local control
 
-## Manual Installation Steps
+## Requirements
 
-### 1. Create Directory Structure
+- Home Assistant 2024.1.0 or newer
+- BG Smart dimmer on the same local network
+- PoP (Proof of Possession) key from device label
 
-```bash
-cd /config
-mkdir -p custom_components/bg_smart_local
-cd custom_components/bg_smart_local
-```
+## Installation
 
-### 2. Install Required Files
+### Method 1: HACS (Recommended)
 
-Create these files in `custom_components/bg_smart_local/`:
+1. **Add Custom Repository**
+   - Open HACS in Home Assistant
+   - Click the 3 dots in top right → **Custom repositories**
+   - Add repository URL: `https://github.com/rrwood/HA_BGSmart_LocalCtl`
+   - Category: **Integration**
+   - Click **Add**
 
-- `__init__.py` - Main integration
-- `manifest.json` - Integration metadata  
-- `config_flow.py` - Configuration UI
-- `esp_local_control.py` - Protocol implementation
-- `light.py` - Light entity
-- `strings.json` - UI strings
-- `esp_local_ctrl.proto` - Protobuf definition
+2. **Install Integration**
+   - Search for "BG Smart Local Control" in HACS
+   - Click **Download**
+   - Restart Home Assistant
 
-### 3. Generate Protobuf Python Files
+3. **Add Integration**
+   - Go to **Settings** → **Devices & Services**
+   - Click **Add Integration**
+   - Search for "BG Smart Local Control"
+   - Follow configuration steps below
 
-You need to compile the `.proto` file to Python:
+### Method 2: Manual Installation
 
-```bash
-# Install protobuf compiler
-pip install protobuf grpcio-tools
+1. **Download Files**
+   ```bash
+   cd /config
+   git clone https://github.com/rrwood/HA_BGSmart_LocalCtl.git
+   cp -r HA_BGSmart_LocalCtl/custom_components/bg_smart_local custom_components/
+   ```
 
-# Generate Python code from .proto file
-cd /config/custom_components/bg_smart_local
-python -m grpc_tools.protoc -I. --python_out=. esp_local_ctrl.proto
-```
+2. **Restart Home Assistant**
 
-This creates `esp_local_ctrl_pb2.py` which is imported by the integration.
+3. **Add Integration** (see configuration below)
 
-### 4. Find Your Device
+## Configuration
 
-Your dimmer needs to be on the same network. Find its IP:
+### Step 1: Find Your Device Information
 
-**Method 1: Router's DHCP list**
-- Log into your router
-- Look for "ESP" device or check connected devices
+Before configuring, you need:
 
-**Method 2: Network scanner**
-```bash
-# Using nmap
-nmap -sn 192.168.1.0/24
+1. **Device IP Address**
+   - Check your router's DHCP client list
+   - Or use a network scanner app
+   - Recommended: Set a static IP or DHCP reservation
 
-# Or use Angry IP Scanner (GUI)
-```
+2. **PoP (Proof of Possession) Key**
+   - Printed on the device label
+   - **Also shown as "Device ID" in BG Smart app** → Device Settings screen
+   - Usually a string of characters/numbers (8-16 characters)
 
-**Method 3: mDNS discovery**
-The device advertises as `_esplocal._tcp` service:
-```bash
-# On Linux/Mac
-avahi-browse -r _esplocal._tcp
+### Step 2: Add Integration
 
-# Or use Discovery app on Android
-```
+1. Go to **Settings** → **Devices & Services**
+2. Click **Add Integration**
+3. Search for "BG Smart Local Control"
+4. Enter configuration:
+   - **Device IP Address**: Your dimmer's IP (e.g., `192.168.1.100`)
+   - **Port**: `8080` (default, pre-filled)
+   - **PoP Key**: From device label (required)
+   - **Node ID**: Leave empty (optional, auto-discovered)
 
-### 5. Test Connection
+5. Click **Submit**
 
-Before setting up Home Assistant, test the connection:
+### Step 3: Verify
 
-```bash
-curl -X POST http://YOUR_DEVICE_IP/esp_local_ctrl/control \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  --data-binary @get_count.bin
-```
+The integration will:
+- ✅ Connect to your dimmer
+- ✅ Discover device name (e.g., "Lounge")
+- ✅ Create light entity (e.g., `light.lounge`)
+- ✅ Show current on/off state and brightness
 
-Where `get_count.bin` is the protobuf-encoded GetPropertyCount message.
+## Usage
 
-### 6. Add Integration in Home Assistant
+### Basic Control
 
-1. Restart Home Assistant
-2. Go to **Settings** → **Devices & Services**
-3. Click **Add Integration**
-4. Search for "BG Smart Local Control"
-5. Enter your device details:
-   - **IP Address**: Device IP (e.g., 192.168.1.100)
-   - **Port**: 80 (default)
-   - **Node ID**: Leave blank (discovered automatically)
-   - **PoP**: Leave blank if using sec0 security
-   - **Security Type**: 0 (for sec0/no encryption)
+The dimmer appears as a standard Home Assistant light entity:
 
-### 7. Configure the Dimmer
+```yaml
+# Turn on at 50% brightness
+service: light.turn_on
+target:
+  entity_id: light.lounge
+data:
+  brightness_pct: 50
 
-Once added, the dimmer will appear as a light entity. You can:
-- Turn on/off
-- Adjust brightness (0-100%)
-- Use in automations
-
-## Understanding Device Parameters
-
-The dimmer's params structure looks like this:
-
-```json
-{
-  "Switch 1": {
-    "Power": {
-      "power": 1
-    },
-    "Brightness": {
-      "brightness": 75
-    }
-  }
-}
+# Turn off
+service: light.turn_off
+target:
+  entity_id: light.lounge
 ```
 
-Where:
-- `"Switch 1"` = Device name (may vary)
-- `Power.power` = 0 (off) or 1 (on)
-- `Brightness.brightness` = 0-100 (percentage)
-
-## Troubleshooting
-
-### Can't Connect to Device
-
-1. **Check same network**: Device and HA must be on same WiFi
-2. **Check firewall**: Ensure port 80 is not blocked
-3. **Check IP address**: Device IP may have changed (use DHCP reservation)
-4. **Try from terminal**: `ping YOUR_DEVICE_IP`
-
-### Device Found But Won't Control
-
-1. **Check security type**: If device uses sec1, you need the PoP key
-2. **Check device name**: The device name in params must match
-3. **Check logs**: Settings → System → Logs → Filter "bg_smart"
-
-### Finding the PoP (Proof of Possession)
-
-If device uses sec1 security, you need the PoP key:
-- Usually printed on device label
-- May be MAC address or serial number
-- Check the BG Smart app settings
-
-### Device Name Unknown
-
-To find the actual device name:
-
-1. Get property values manually:
-```python
-import asyncio
-from esp_local_control import ESPLocalDevice
-
-async def test():
-    device = ESPLocalDevice("192.168.1.100", 80, "", "", 0)
-    params = await device.get_params()
-    print(params)
-
-asyncio.run(test())
-```
-
-2. Look for device names in the output
-
-## Advanced Configuration
-
-### Multiple Dimmers
-
-Add each dimmer separately with its own IP address. They'll all appear as separate light entities.
-
-### Automation Example
+### Automations
 
 ```yaml
 automation:
@@ -207,84 +130,178 @@ automation:
     action:
       - service: light.turn_on
         target:
-          entity_id: light.bg_smart_switch_1
+          entity_id: light.lounge
         data:
           brightness_pct: 30
+
+  - alias: "Lights off at bedtime"
+    trigger:
+      - platform: time
+        at: "23:00:00"
+    action:
+      - service: light.turn_off
+        target:
+          entity_id: light.lounge
 ```
 
-### Security Level 1 (Encrypted)
+### Scenes
 
-If your device uses sec1 security:
-
-```python
-# When adding integration, set:
-Security Type: 1
-PoP: "your_pop_key_here"
+```yaml
+scene:
+  - name: Movie Time
+    entities:
+      light.lounge:
+        state: on
+        brightness_pct: 20
 ```
 
-The PoP key is usually:
-- Printed on device
-- Last 8 digits of MAC address
-- Check app settings
+### Dashboard Card
 
-## Network Performance
-
-- **Latency**: ~50-100ms (local network)
-- **Polling interval**: Default 30 seconds
-- **Reliability**: Very high (no cloud dependency)
-
-## Comparison: Cloud API vs Local Control
-
-| Feature | Cloud API | Local Control |
-|---------|-----------|---------------|
-| Latency | 500ms-2s | 50-100ms |
-| Internet required | Yes | No |
-| Reliability | Medium | High |
-| Privacy | Data to cloud | All local |
-| Setup complexity | OAuth | IP address |
-
-**Recommendation**: Use local control for better performance and privacy!
-
-## Protocol Documentation
-
-For developers wanting to understand the protocol:
-
-1. **ESP Local Control Official**: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/protocols/esp_local_ctrl.html
-
-2. **Protobuf Messages**: See `esp_local_ctrl.proto`
-
-3. **Request Flow**:
-```
-Client                          Device
-  |                               |
-  |-- Get Property Count -------->|
-  |<------ Count = 2 -------------|
-  |                               |
-  |-- Get Properties [0,1] ------>|
-  |<------ JSON data -------------|
-  |                               |
-  |-- Set Property [1] ---------->|
-  |<------ Success ---------------|
+```yaml
+type: light
+entity: light.lounge
+name: Lounge Dimmer
 ```
 
-## Next Steps
+## Troubleshooting
 
-1. ✅ Device discovered and connected
-2. ✅ Light entity created
-3. ✅ Can control via UI
-4. ⏭️ Add to dashboard
-5. ⏭️ Create automations
-6. ⏭️ Enjoy local control!
+### Cannot Connect to Device
+
+**Check IP Address:**
+```bash
+ping 192.168.1.100  # Replace with your device IP
+```
+
+**Verify Port:**
+- Default port is `8080`
+- Device must be on same network as Home Assistant
+
+**Check PoP Key:**
+- Must match exactly from device label
+- Case-sensitive
+- No spaces
+
+### Device Found But No Control
+
+**Check Logs:**
+```
+Settings → System → Logs → Filter "bg_smart"
+```
+
+**Common Issues:**
+- Wrong PoP key → Re-configure integration
+- Network firewall blocking port 8080
+- Device firmware outdated
+
+### Brightness Not Working
+
+**Delete and Re-add:**
+1. Remove integration
+2. Restart Home Assistant
+3. Re-add integration
+
+### Enable Debug Logging
+
+Add to `configuration.yaml`:
+```yaml
+logger:
+  default: info
+  logs:
+    custom_components.bg_smart_local: debug
+```
+
+Restart and check logs.
+
+## Technical Details
+
+### Protocol
+
+- **Base Protocol**: ESP Local Control (Espressif)
+- **Transport**: HTTP POST with Protocol Buffers
+- **Port**: 8080 (HTTPS)
+- **Security**: Sec1 (Curve25519 + AES-256-CTR)
+- **Authentication**: PoP (Proof of Possession) key
+
+### Communication
+
+```
+Home Assistant                    BG Smart Dimmer
+      |                                  |
+      |--- Get Property Count --------->|
+      |<--- Count = 2 -------------------|
+      |                                  |
+      |--- Get Property Values -------->|
+      |<--- Device State ----------------|
+      |     (Power: True, Brightness: 48)|
+      |                                  |
+      |--- Set Property Values -------->|
+      |     (Brightness: 75)             |
+      |<--- Success --------------------|
+```
+
+### Update Frequency
+
+- Polling interval: 30 seconds
+- Immediate update on command
+- Configurable in future versions
+
+## Comparison: Local vs Cloud
+
+| Feature | Local Control | Cloud API |
+|---------|--------------|-----------|
+| Latency | 50-100ms | 500ms-2s |
+| Internet Required | ❌ No | ✅ Yes |
+| Reliability | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| Privacy | ✅ All local | ❌ Data to cloud |
+| Setup | IP + PoP | OAuth + Credentials |
+| Works Offline | ✅ Yes | ❌ No |
+
+## FAQ
+
+**Q: Where do I find the PoP key?**  
+A: It's printed on a label on the device, usually on the back or inside. It may be labeled as "PoP", "Proof of Possession", or "Security Key".
+
+**Q: Can I control multiple dimmers?**  
+A: Yes! Add each dimmer as a separate integration with its own IP address.
+
+**Q: Does this work with BG Smart plugs or other devices?**  
+A: Currently optimized for dimmers. Other device types may work but are untested.
+
+**Q: What if I don't have the PoP key?**  
+A: Check the BG Smart mobile app settings - it may display the PoP key. Otherwise, you'll need to contact BG Smart support.
+
+**Q: Does this interfere with the BG Smart app?**  
+A: No, both can be used simultaneously. Changes made in either app or Home Assistant will be reflected in both.
+
+**Q: Can I use this without the BG Smart cloud?**  
+A: Yes! This integration works completely independently of BG Smart cloud services.
 
 ## Support
 
-If you need help:
-1. Check Home Assistant logs
-2. Verify network connectivity
-3. Test with curl commands
-4. Open GitHub issue with logs
+- **Issues**: [GitHub Issues](https://github.com/rrwood/HA_BGSmart_LocalCtl/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/rrwood/HA_BGSmart_LocalCtl/discussions)
+- **Home Assistant Community**: [Community Thread](https://community.home-assistant.io/)
+
+## Contributing
+
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request
 
 ## Credits
 
-Protocol reverse-engineered from BG Smart Android app.
-Based on Espressif's ESP Local Control protocol.
+- Protocol reverse-engineered from BG Smart Android app
+- Based on [ESP Local Control](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/protocols/esp_local_ctrl.html) by Espressif
+
+## License
+
+MIT License - See [LICENSE](LICENSE) file for details
+
+## Disclaimer
+
+This integration is not affiliated with, endorsed by, or connected to BG Electrical or Luceco. All product names, logos, and brands are property of their respective owners.
+
+---
+
+**Enjoy fast, local, and private control of your BG Smart dimmers!** ⚡

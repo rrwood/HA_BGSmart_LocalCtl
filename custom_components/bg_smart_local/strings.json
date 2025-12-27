@@ -1,20 +1,28 @@
 {
-    "config": {
-        "step": {
-            "user": {
-                "title": "BG Smart Local Control",
-                "description": "Connect to your BG Smart dimmer on the local network",
-                "data": {
-                    "host": "IP Address",
-                    "port": "Port",
-                    "node_id": "Node ID (optional)",
-                    "pop": "Proof of Possession (optional)",
-                    "security_type": "Security Type (0=None, 1=Sec1)"
-                }
-            }
+  "config": {
+    "step": {
+      "user": {
+        "title": "BG Smart Local Control",
+        "description": "Connect to your BG Smart dimmer on the local network.\n\nThe PoP (Proof of Possession) key is shown as 'Device ID' in the BG Smart app under device settings, or printed on the device label.",
+        "data": {
+          "host": "Device IP Address",
+          "port": "Port",
+          "pop": "PoP Key (Device ID)",
+          "node_id": "Node ID (optional)"
         },
-        "error": {
-            "cannot_connect": "Failed to connect to device"
+        "data_description": {
+          "host": "IP address of your BG Smart dimmer (e.g., 192.168.1.100)",
+          "port": "Communication port (default: 8080)",
+          "pop": "Find in BG Smart app → Device Settings → Device ID",
+          "node_id": "Leave empty to auto-discover"
         }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to device. Check IP address, port, and PoP key."
+    },
+    "abort": {
+      "already_configured": "Device is already configured"
     }
+  }
 }
