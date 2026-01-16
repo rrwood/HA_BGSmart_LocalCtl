@@ -1,4 +1,4 @@
-"""ESP Local Control Protocol Handler - Final Implementation..."""
+"""ESP Local Control Protocol Handler - Final Implementation."""
 import asyncio
 import json
 import logging
@@ -6,16 +6,29 @@ from typing import Optional, Dict, Any, List
 
 import aiohttp
 
-# Import the generated protobuf messages
-try:
-    from . import esp_local_ctrl_pb2 as pb
-    PROTOBUF_AVAILABLE = True
-except ImportError:
-    PROTOBUF_AVAILABLE = False
-    import warnings
-    warnings.warn("Protobuf messages not available. Run: python -m grpc_tools.protoc -I. --python_out=. esp_local_ctrl.proto")
-
 _LOGGER = logging.getLogger(__name__)
+
+# Lazy import of protobuf to avoid blocking event loop
+_pb = None
+_PROTOBUF_AVAILABLE = None
+
+
+def _get_protobuf():
+    """Lazy load protobuf module."""
+    global _pb, _PROTOBUF_AVAILABLE
+    
+    if _PROTOBUF_AVAILABLE is None:
+        try:
+            from . import esp_local_ctrl_pb2
+            _pb = esp_local_ctrl_pb2
+            _PROTOBUF_AVAILABLE = True
+            _LOGGER.debug("Protobuf module loaded successfully")
+        except ImportError as ex:
+            _pb = None
+            _PROTOBUF_AVAILABLE = False
+            _LOGGER.error("Failed to import protobuf: %s", ex)
+    
+    return _pb
 
 
 class ESPLocalDevice:
@@ -33,17 +46,16 @@ class ESPLocalDevice:
         self.property_count = -1
         self._params_cache = {}
         
-        if not PROTOBUF_AVAILABLE:
-            _LOGGER.error("Protobuf messages not available! Integration will not work.")
-        
+        # Don't load protobuf yet - will be loaded on first use
         _LOGGER.info(
-            "Initialized v0.1.8 ESPLocalDevice: host=%s, port=%s, security=%s, protobuf=%s",
-            host, port, security_type, PROTOBUF_AVAILABLE
+            "Initialized ESPLocalDevice: host=%s, port=%s, security=%s",
+            host, port, security_type
         )
     
     async def _send_protobuf_request(self, message) -> Optional[bytes]:
         """Send protobuf request and get response."""
-        if not PROTOBUF_AVAILABLE:
+        pb = _get_protobuf()
+        if not pb:
             _LOGGER.error("Cannot send request: protobuf not available")
             return None
         
@@ -84,7 +96,8 @@ class ESPLocalDevice:
     
     async def get_property_count(self) -> int:
         """Get the number of properties from device."""
-        if not PROTOBUF_AVAILABLE:
+        pb = _get_protobuf()
+        if not pb:
             _LOGGER.error("Protobuf not available")
             return -1
         
@@ -125,7 +138,8 @@ class ESPLocalDevice:
     
     async def get_property_values(self) -> Optional[Dict[str, Any]]:
         """Get all property values from device."""
-        if not PROTOBUF_AVAILABLE:
+        pb = _get_protobuf()
+        if not pb:
             _LOGGER.error("Protobuf not available")
             return None
         
@@ -187,7 +201,8 @@ class ESPLocalDevice:
     
     async def set_property_values(self, params_json: Dict[str, Any]) -> bool:
         """Set device parameters."""
-        if not PROTOBUF_AVAILABLE:
+        pb = _get_protobuf()
+        if not pb:
             _LOGGER.error("Protobuf not available")
             return False
         

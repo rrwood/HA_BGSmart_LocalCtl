@@ -16,20 +16,22 @@ SCAN_INTERVAL = timedelta(seconds=30)
 
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
-    """Set up the BG Smart Local Control component..."""
+    """Set up the BG Smart Local Control component."""
     hass.data.setdefault(DOMAIN, {})
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up BG Smart Local Control from a config entry."""
+    # Lazy import to avoid blocking during startup
     from .esp_local_control import ESPLocalDevice
     
     host = entry.data["host"]
-    port = entry.data.get("port", 80)
+    port = entry.data.get("port", 8080)
     node_id = entry.data.get("node_id", "")
-    pop = entry.data.get("pop", "")
-    security_type = entry.data.get("security_type", 0)
+    pop = entry.data["pop"]
+    # Always use Sec1 security for BG Smart devices
+    security_type = 1
     
     device = ESPLocalDevice(host, port, node_id, pop, security_type)
     
