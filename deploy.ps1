@@ -1,5 +1,7 @@
 # filepath: c:\Users\rrwoo\OneDrive\Documents\Claude\BGSmart_HA_Plugin\deploy.ps1
 # Git workflow script: sync, commit, tag, and push
+# Install GitHub CLI: winget install GitHub.cli or visit https://cli.github.com/
+#Authenticate: Run gh auth login before using the script
 
 param(
     [string]$CommitMessage = "Update version"
