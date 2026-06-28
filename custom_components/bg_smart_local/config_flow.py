@@ -3,9 +3,8 @@ import logging
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import callback
+from homeassistant.components import network
 from homeassistant.const import CONF_HOST, CONF_PORT
-from homeassistant.helpers import network
 
 from .const import DOMAIN
 
