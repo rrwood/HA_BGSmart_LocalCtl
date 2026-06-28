@@ -78,19 +78,20 @@ The PoP (Proof of Possession) key is required for secure communication:
 
 If successful, you'll see:
 - ✅ Integration added to Devices & Services
-- ✅ Device card showing dimmer name (e.g., "Lounge")
-- ✅ Light entity created (e.g., `light.lounge`)
+- ✅ Device card showing device name (e.g., "Lounge" or "Left Socket")
+- ✅ Light entity created for dimmers (e.g., `light.lounge`)
+- ✅ Switch entities created for power-only sockets (e.g., `switch.left_socket`)
 
 ### 4. Test Control
 
-1. **Find your light**:
+1. **Find your light or switch**:
    - Go to **Settings** → **Devices & Services**
    - Click on **BG Smart Local Control**
    - Click on your device name
 
 2. **Test controls**:
    - Toggle On/Off
-   - Adjust brightness slider
+   - Adjust brightness slider for dimmers
    - Changes should be instant (<100ms)
 
 ## Troubleshooting
@@ -155,7 +156,7 @@ If successful, you'll see:
 
 ### Static IP (Recommended)
 
-Set a static IP or DHCP reservation for your dimmer:
+Set a static IP or DHCP reservation for your device:
 
 **Why**: Prevents IP changes requiring reconfiguration
 
@@ -165,9 +166,9 @@ Set a static IP or DHCP reservation for your dimmer:
 3. Add reservation for device MAC address
 4. Assign permanent IP (e.g., `192.168.1.100`)
 
-### Multiple Dimmers
+### Multiple Devices
 
-To add multiple dimmers:
+To add multiple dimmers or sockets:
 
 1. Add integration multiple times
 2. Use different IP address for each
@@ -220,4 +221,4 @@ automation:
 
 ---
 
-**That's it! Enjoy fast, local control of your BG Smart dimmers!** 🎉
+**That's it! Enjoy fast, local control of your BG Smart devices!** 🎉

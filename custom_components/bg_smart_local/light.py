@@ -54,7 +54,7 @@ async def async_setup_entry(
             _LOGGER.info("Adding %s light entities", len(entities))
             async_add_entities(entities)
         else:
-            _LOGGER.warning("No dimmer devices found in parameters")
+            _LOGGER.info("No dimmer devices found in parameters")
             
     except Exception as ex:
         _LOGGER.error("Failed to set up lights: %s", ex, exc_info=True)
