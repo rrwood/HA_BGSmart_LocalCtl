@@ -78,19 +78,20 @@ The PoP (Proof of Possession) key is required for secure communication:
 
 If successful, you'll see:
 - ✅ Integration added to Devices & Services
-- ✅ Device card showing dimmer name (e.g., "Lounge")
-- ✅ Light entity created (e.g., `light.lounge`)
+- ✅ Device card showing device name (e.g., "Lounge" or "Left Socket")
+- ✅ Light entity created for dimmers (e.g., `light.lounge`)
+- ✅ Switch entities created for power-only sockets (e.g., `switch.left_socket`)
 
 ### 4. Test Control
 
-1. **Find your light**:
+1. **Find your light or switch**:
    - Go to **Settings** → **Devices & Services**
    - Click on **BG Smart Local Control**
    - Click on your device name
 
 2. **Test controls**:
    - Toggle On/Off
-   - Adjust brightness slider
+   - Adjust brightness slider for dimmers
    - Changes should be instant (<100ms)
 
 ## Troubleshooting

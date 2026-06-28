@@ -4,7 +4,7 @@
 [![GitHub release](https://img.shields.io/github/release/rrwood/HA_BGSmart_LocalCtl.svg)](https://github.com/rrwood/HA_BGSmart_LocalCtl/releases)
 [![License](https://img.shields.io/github/license/rrwood/HA_BGSmart_LocalCtl.svg)](LICENSE)
 
-Local control integration for BG Smart (Luceco) dimmer switches using the ESP Local Control protocol.
+Local control integration for BG Smart (Luceco) dimmer switches and sockets using the ESP Local Control protocol.
 
 ## Features
 
@@ -12,19 +12,21 @@ Local control integration for BG Smart (Luceco) dimmer switches using the ESP Lo
 ✅ **Fast Response** - 50-100ms latency vs 500ms-2s for cloud  
 ✅ **Privacy Friendly** - All communication stays on your local network  
 ✅ **Full Brightness Control** - On/Off and 0-100% dimming  
+✅ **Socket Control** - On/Off support for power-only socket outlets
 ✅ **Auto Discovery** - Automatically finds and configures your dimmers  
 ✅ **Secure** - Uses Sec1 encryption with PoP (Proof of Possession)  
 
 ## Supported Devices
 
 - BG Smart Dimmer Switch (DMHCM)
+- BG Smart Double Socket 900 Series (822/HC-02)
 - Luceco Dimmer Controller
 - Any ESP32-based BG Smart/Luceco device with local control
 
 ## Requirements
 
 - Home Assistant 2024.1.0 or newer
-- BG Smart dimmer on the same local network
+- BG Smart dimmer or socket on the same local network
 - PoP (Proof of Possession) key from device label
 
 ## Installation
@@ -94,10 +96,11 @@ Before configuring, you need:
 ### Step 3: Verify
 
 The integration will:
-- ✅ Connect to your dimmer
-- ✅ Discover device name (e.g., "Lounge")
-- ✅ Create light entity (e.g., `light.lounge`)
-- ✅ Show current on/off state and brightness
+- ✅ Connect to your device
+- ✅ Discover device names (e.g., "Lounge", "Left Socket", "Right Socket")
+- ✅ Create light entities for dimmers (e.g., `light.lounge`)
+- ✅ Create switch entities for power-only sockets (e.g., `switch.left_socket`)
+- ✅ Show current on/off state and brightness where supported
 
 ## Usage
 
@@ -117,6 +120,20 @@ data:
 service: light.turn_off
 target:
   entity_id: light.lounge
+```
+
+Power-only sockets appear as standard Home Assistant switch entities:
+
+```yaml
+# Turn on a socket outlet
+service: switch.turn_on
+target:
+  entity_id: switch.left_socket
+
+# Turn off a socket outlet
+service: switch.turn_off
+target:
+  entity_id: switch.left_socket
 ```
 
 ### Automations
@@ -265,7 +282,7 @@ A: It's printed on a label on the device, usually on the back or inside. It may 
 A: Yes! Add each dimmer as a separate integration with its own IP address.
 
 **Q: Does this work with BG Smart plugs or other devices?**  
-A: Currently optimized for dimmers. Other device types may work but are untested.
+A: BG Smart power-only socket devices are exposed as switches when the device reports writable `Power` parameters. Other device types may work but are untested.
 
 **Q: What if I don't have the PoP key?**  
 A: Check the BG Smart mobile app settings - it may display the PoP key. Otherwise, you'll need to contact BG Smart support.
