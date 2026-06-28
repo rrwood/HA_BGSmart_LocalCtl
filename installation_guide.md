@@ -156,7 +156,7 @@ If successful, you'll see:
 
 ### Static IP (Recommended)
 
-Set a static IP or DHCP reservation for your dimmer:
+Set a static IP or DHCP reservation for your device:
 
 **Why**: Prevents IP changes requiring reconfiguration
 
@@ -166,9 +166,9 @@ Set a static IP or DHCP reservation for your dimmer:
 3. Add reservation for device MAC address
 4. Assign permanent IP (e.g., `192.168.1.100`)
 
-### Multiple Dimmers
+### Multiple Devices
 
-To add multiple dimmers:
+To add multiple dimmers or sockets:
 
 1. Add integration multiple times
 2. Use different IP address for each
@@ -221,4 +221,4 @@ automation:
 
 ---
 
-**That's it! Enjoy fast, local control of your BG Smart dimmers!** 🎉
+**That's it! Enjoy fast, local control of your BG Smart devices!** 🎉

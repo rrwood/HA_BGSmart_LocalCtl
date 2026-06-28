@@ -13,7 +13,7 @@ Local control integration for BG Smart (Luceco) dimmer switches and sockets usin
 ✅ **Privacy Friendly** - All communication stays on your local network  
 ✅ **Full Brightness Control** - On/Off and 0-100% dimming  
 ✅ **Socket Control** - On/Off support for power-only socket outlets
-✅ **Auto Discovery** - Automatically finds and configures your dimmers  
+✅ **Auto Discovery** - Automatically finds and configures your devices
 ✅ **Secure** - Uses Sec1 encryption with PoP (Proof of Possession)  
 
 ## Supported Devices
@@ -86,7 +86,7 @@ Before configuring, you need:
 2. Click **Add Integration**
 3. Search for "BG Smart Local Control"
 4. Enter configuration:
-   - **Device IP Address**: Your dimmer's IP (e.g., `192.168.1.100`)
+   - **Device IP Address**: Your device's IP (e.g., `192.168.1.100`)
    - **Port**: `8080` (default, pre-filled)
    - **PoP Key**: From device label (required)
    - **Node ID**: Leave empty (optional, auto-discovered)
@@ -278,8 +278,8 @@ Home Assistant                    BG Smart Dimmer
 **Q: Where do I find the PoP key?**  
 A: It's printed on a label on the device, usually on the back or inside. It may be labeled as "PoP", "Proof of Possession", or "Security Key".
 
-**Q: Can I control multiple dimmers?**  
-A: Yes! Add each dimmer as a separate integration with its own IP address.
+**Q: Can I control multiple devices?**
+A: Yes! Add each dimmer or socket as a separate integration with its own IP address.
 
 **Q: Does this work with BG Smart plugs or other devices?**  
 A: BG Smart power-only socket devices are exposed as switches when the device reports writable `Power` parameters. Other device types may work but are untested.
@@ -321,4 +321,4 @@ This integration is not affiliated with, endorsed by, or connected to BG Electri
 
 ---
 
-**Enjoy fast, local, and private control of your BG Smart dimmers!** ⚡
+**Enjoy fast, local, and private control of your BG Smart devices!** ⚡
