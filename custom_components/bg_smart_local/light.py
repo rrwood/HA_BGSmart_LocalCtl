@@ -9,6 +9,7 @@ from homeassistant.components.light import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -18,6 +19,9 @@ from homeassistant.helpers.update_coordinator import (
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+MANUFACTURER = "BG Electrical"
+DEFAULT_MODEL = "Smart Dimmer"
 
 
 async def async_setup_entry(
@@ -30,7 +34,7 @@ async def async_setup_entry(
     device = data["device"]
     coordinator = data["coordinator"]
     
-    _LOGGER.debug("Setting up BG Smart Local lights v0.1.8")
+    _LOGGER.debug("Setting up BG Smart Local lights")
     
     try:
         # Get device parameters from coordinator
@@ -62,6 +66,10 @@ async def async_setup_entry(
 
 class BGSmartDimmer(CoordinatorEntity, LightEntity):
     """Representation of a BG Smart Dimmer."""
+
+    _attr_has_entity_name = True
+    # The light is the device's primary entity, so it takes the device name.
+    _attr_name = None
     
     def __init__(
         self, 
@@ -81,7 +89,13 @@ class BGSmartDimmer(CoordinatorEntity, LightEntity):
         friendly_name = device_params.get("Name", device_name)
         
         self._attr_unique_id = f"{entry.entry_id}_{device_name}"
-        self._attr_name = friendly_name
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, entry.entry_id)},
+            name=friendly_name,
+            manufacturer=MANUFACTURER,
+            # The params key (e.g. "DMHCM") is the product code.
+            model=device_name or DEFAULT_MODEL,
+        )
         self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
         self._attr_color_mode = ColorMode.BRIGHTNESS
         
