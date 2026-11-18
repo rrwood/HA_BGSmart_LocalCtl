@@ -30,15 +30,17 @@ async def async_setup_entry(
     device = data["device"]
     coordinator = data["coordinator"]
     
-    _LOGGER.debug("Setting up BG Smart Local lights v0.1.8")
+    _LOGGER.debug("Setting up BG Smart Local lights")
     
     try:
-        # Get device parameters from coordinator
+        # Get device parameters from coordinator (first refresh already required params)
         params = coordinator.data
         _LOGGER.info("Device params: %s", params)
         
         if not params:
-            _LOGGER.error("No params found in device properties")
+            _LOGGER.error(
+                "No params in coordinator data after successful first refresh; skipping entities"
+            )
             return
         
         # Filter to only create entities for actual dimmer devices
