@@ -14,7 +14,7 @@
           "host": "IP address of your BG Smart device (e.g., 192.168.1.100)",
           "port": "Communication port (default: 8080)",
           "pop": "Find in BG Smart app → Device Settings → Device ID",
-          "node_id": "Leave empty to auto-discover"
+          "node_id": "Leave empty (not currently used)"
         }
       }
     },
