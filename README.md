@@ -4,7 +4,7 @@
 [![GitHub release](https://img.shields.io/github/release/rrwood/HA_BGSmart_LocalCtl.svg)](https://github.com/rrwood/HA_BGSmart_LocalCtl/releases)
 [![License](https://img.shields.io/github/license/rrwood/HA_BGSmart_LocalCtl.svg)](LICENSE)
 
-Local control integration for BG Smart (Luceco) dimmer switches using the ESP Local Control protocol.
+Local control integration for BG Smart (Luceco) dimmer switches and smart sockets using the ESP Local Control protocol.
 
 ## Features
 
@@ -12,19 +12,29 @@ Local control integration for BG Smart (Luceco) dimmer switches using the ESP Lo
 ✅ **Fast Response** - 50-100ms latency vs 500ms-2s for cloud  
 ✅ **Privacy Friendly** - All communication stays on your local network  
 ✅ **Full Brightness Control** - On/Off and 0-100% dimming  
-✅ **Auto Discovery** - Automatically finds and configures your dimmers  
+✅ **Smart Socket Support** - Per-outlet power and parental lock on double sockets  
+✅ **Auto Configuration** - Reads device name and capabilities once you supply the IP  
+⚠️ **No Network Auto-Discovery** - Devices must be added by IP address (see [Auto-Discovery](#auto-discovery) below)  
 ✅ **Secure** - Uses Sec1 encryption with PoP (Proof of Possession)  
 
 ## Supported Devices
 
 - BG Smart Dimmer Switch (DMHCM)
+- BG Smart Double Socket (Left/Right outlets with parental lock)
 - Luceco Dimmer Controller
 - Any ESP32-based BG Smart/Luceco device with local control
+
+### Entities Created
+
+| Device | Entities |
+|--------|----------|
+| Dimmer | One `light` entity with brightness |
+| Double Socket | One device with `switch.<name>_left_socket`, `switch.<name>_right_socket`, and a `... parental lock` switch for each outlet |
 
 ## Requirements
 
 - Home Assistant 2024.1.0 or newer
-- BG Smart dimmer on the same local network
+- BG Smart dimmer or smart socket on the same local network
 - PoP (Proof of Possession) key from device label
 
 ## Installation
@@ -87,21 +97,23 @@ Before configuring, you need:
    - **Device IP Address**: Your dimmer's IP (e.g., `192.168.1.100`)
    - **Port**: `8080` (default, pre-filled)
    - **PoP Key**: From device label (required)
-   - **Node ID**: Leave empty (optional, auto-discovered)
+   - **Node ID**: Leave empty (optional, not currently used)
 
 5. Click **Submit**
 
 ### Step 3: Verify
 
 The integration will:
-- ✅ Connect to your dimmer
-- ✅ Discover device name (e.g., "Lounge")
-- ✅ Create light entity (e.g., `light.lounge`)
-- ✅ Show current on/off state and brightness
+- ✅ Connect to your device
+- ✅ Read the device name (e.g., "Lounge" or "Utility Room Smart Socket")
+- ✅ Create a light entity for dimmers (e.g., `light.lounge`) or switch entities for sockets
+- ✅ Show current on/off state (and brightness for dimmers)
 
 ## Usage
 
 ### Basic Control
+
+#### Dimmers
 
 The dimmer appears as a standard Home Assistant light entity:
 
@@ -117,6 +129,22 @@ data:
 service: light.turn_off
 target:
   entity_id: light.lounge
+```
+
+#### Smart Sockets
+
+A double socket appears as one device with a power switch and a parental lock switch per outlet (called "Parental Lock" in the BG Smart app):
+
+```yaml
+# Turn on the left outlet
+service: switch.turn_on
+target:
+  entity_id: switch.utility_room_smart_socket_left_socket
+
+# Enable parental lock on the right outlet
+service: switch.turn_on
+target:
+  entity_id: switch.utility_room_smart_socket_right_socket_parental_lock
 ```
 
 ### Automations
@@ -162,6 +190,15 @@ type: light
 entity: light.lounge
 name: Lounge Dimmer
 ```
+
+## Auto-Discovery
+
+This integration does **not** currently discover devices on the network. Every dimmer or socket must be added manually with its IP address (a static IP or DHCP reservation is strongly recommended).
+
+- **Dimmers**: Auto-discovery is not implemented. Once you enter the IP, the device name and capabilities are read automatically.
+- **Double sockets**: Auto-discovery is not implemented and has **not been tested**. In a local mDNS scan the socket did not advertise the standard `_esp_local_ctrl._tcp` service that Espressif's ESP Local Control normally publishes, so zeroconf-based discovery may not be possible without further investigation of the firmware.
+
+If you find that your device does advertise itself on the network, please open an issue with the output of a scan (e.g. `dns-sd -B _services._dns-sd._udp` on macOS or `avahi-browse -a` on Linux) so discovery can be looked at.
 
 ## Troubleshooting
 
@@ -264,8 +301,8 @@ A: It's printed on a label on the device, usually on the back or inside. It may 
 **Q: Can I control multiple dimmers?**  
 A: Yes! Add each dimmer as a separate integration with its own IP address.
 
-**Q: Does this work with BG Smart plugs or other devices?**  
-A: Currently optimized for dimmers. Other device types may work but are untested.
+**Q: Does this work with BG Smart sockets or other devices?**  
+A: Dimmers and double sockets are supported (power and parental lock per outlet). Socket timers, schedules, and scenes are not yet exposed. Other device types may work but are untested.
 
 **Q: What if I don't have the PoP key?**  
 A: Check the BG Smart mobile app settings - it may display the PoP key. Otherwise, you'll need to contact BG Smart support.
@@ -304,4 +341,4 @@ This integration is not affiliated with, endorsed by, or connected to BG Electri
 
 ---
 
-**Enjoy fast, local, and private control of your BG Smart dimmers!** ⚡
+**Enjoy fast, local, and private control of your BG Smart devices!** ⚡

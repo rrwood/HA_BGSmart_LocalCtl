@@ -69,8 +69,10 @@ The PoP (Proof of Possession) key is required for secure communication:
    Device IP Address: 192.168.1.100    (your device IP)
    Port: 8080                           (pre-filled, don't change)
    PoP Key: AbCd1234                    (from device label)
-   Node ID: [leave empty]               (auto-discovered)
+   Node ID: [leave empty]               (not currently used)
    ```
+
+> **Note:** The integration does not auto-discover devices on your network. Each dimmer or socket must be added by IP address. Auto-discovery for sockets has not been tested.
 
 5. Click **Submit**
 
@@ -78,8 +80,9 @@ The PoP (Proof of Possession) key is required for secure communication:
 
 If successful, you'll see:
 - ✅ Integration added to Devices & Services
-- ✅ Device card showing dimmer name (e.g., "Lounge")
-- ✅ Light entity created (e.g., `light.lounge`)
+- ✅ Device card showing device name (e.g., "Lounge" or "Utility Room Smart Socket")
+- ✅ Light entity created for dimmers (e.g., `light.lounge`)
+- ✅ Switch entities created for sockets (power and parental lock per outlet)
 
 ### 4. Test Control
 
@@ -155,7 +158,7 @@ If successful, you'll see:
 
 ### Static IP (Recommended)
 
-Set a static IP or DHCP reservation for your dimmer:
+Set a static IP or DHCP reservation for your device:
 
 **Why**: Prevents IP changes requiring reconfiguration
 
@@ -165,9 +168,9 @@ Set a static IP or DHCP reservation for your dimmer:
 3. Add reservation for device MAC address
 4. Assign permanent IP (e.g., `192.168.1.100`)
 
-### Multiple Dimmers
+### Multiple Devices
 
-To add multiple dimmers:
+To add multiple dimmers or sockets:
 
 1. Add integration multiple times
 2. Use different IP address for each
@@ -220,4 +223,4 @@ automation:
 
 ---
 
-**That's it! Enjoy fast, local control of your BG Smart dimmers!** 🎉
+**That's it! Enjoy fast, local control of your BG Smart devices!** 🎉

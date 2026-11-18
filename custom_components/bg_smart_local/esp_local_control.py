@@ -87,12 +87,20 @@ class ESPLocalDevice:
                         _LOGGER.debug("Received response: %d bytes", len(body))
                         return body
                     else:
-                        _LOGGER.error("HTTP error: %s", response.status)
+                        _LOGGER.error("HTTP error from %s:%s: %s", self.host, self.port, response.status)
                         text = await response.text()
                         _LOGGER.error("Response body: %s", text)
                         return None
+        except TimeoutError:
+            _LOGGER.warning(
+                "Timeout communicating with %s:%s", self.host, self.port
+            )
+            return None
         except aiohttp.ClientError as e:
-            _LOGGER.error("Connection error: %s", e)
+            _LOGGER.warning(
+                "Connection error communicating with %s:%s: %s",
+                self.host, self.port, e,
+            )
             return None
         except Exception as e:
             _LOGGER.error("Unexpected error: %s", e, exc_info=True)
@@ -120,7 +128,7 @@ class ESPLocalDevice:
         
         response_data = await self._send_protobuf_request(request)
         if not response_data:
-            _LOGGER.error("Failed to get property count")
+            _LOGGER.debug("Failed to get property count from %s:%s", self.host, self.port)
             return -1
         
         try:
@@ -155,7 +163,7 @@ class ESPLocalDevice:
         
         count = await self.get_property_count()
         if count <= 0:
-            _LOGGER.error("Invalid property count: %d", count)
+            _LOGGER.debug("Invalid property count from %s:%s: %d", self.host, self.port, count)
             return None
         
         request = pb.LocalCtrlMessage(
@@ -167,7 +175,7 @@ class ESPLocalDevice:
         
         response_data = await self._send_protobuf_request(request)
         if not response_data:
-            _LOGGER.error("Failed to get property values")
+            _LOGGER.debug("Failed to get property values from %s:%s", self.host, self.port)
             return None
         
         try:
@@ -268,20 +276,30 @@ class ESPLocalDevice:
             _LOGGER.error("Failed to parse response: %s", e, exc_info=True)
             return False
     
-    async def get_params(self) -> Dict[str, Any]:
-        """Get current device params."""
+    async def get_params(self) -> Optional[Dict[str, Any]]:
+        """Get current device params.
+
+        Returns None on transport failure or when the response has no params,
+        so the coordinator can raise UpdateFailed. Last good data is retained
+        by the coordinator, not by returning the local cache here.
+        """
         _LOGGER.debug("Getting params")
 
         # Always fetch fresh properties to capture physical changes (e.g. dimmer adjusted manually)
         properties = await self.get_property_values()
 
-        if properties and "params" in properties:
+        if properties is None:
+            return None
+
+        if "params" in properties:
             self._params_cache = properties["params"]
             _LOGGER.debug("Updated params from device: %s", self._params_cache)
-        else:
-            _LOGGER.warning("No params found in properties")
+            return self._params_cache
 
-        return self._params_cache
+        _LOGGER.warning(
+            "Device %s:%s responded but params key missing", self.host, self.port
+        )
+        return None
     
     async def set_param(self, device_name: str, param_name: str, value: Any) -> bool:
         """Set a specific parameter.
